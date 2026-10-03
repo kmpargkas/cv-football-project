@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Virtual env
+.venv/
+venv/
+
+# ML artifacts / data. No footage, annotations, or trained weights ship with the
+# repo -- a clone has the pipeline, and you bring your own clip (scripts/new_clip.py).
+data/
+outputs/
+configs/
+weights/**/*.pt
+weights/**/*.pth
+
+# Development plans and specs. Kept locally, not part of the shipped repo.
+PLAN.md
+docs/superpowers/
+
+# Video
+*.mp4
+*.mov
+
+# Secrets / credentials — never commit these
+.env
+.env.*
+.netrc
+*.pem
+*.key
+secrets.yaml
+secrets.json
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

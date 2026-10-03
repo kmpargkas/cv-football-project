@@ -1,0 +1,35 @@
+{
+  "_comment": "Registry of model weights. Weight files are git-ignored; this manifest is the tracked record of what each artifact is and where it came from. Add an entry whenever a model is trained on Kaggle and exported. Fetch with: uv run python scripts/pull_weights.py",
+  "_schema": {
+    "component": "detection | homography | reid | ball",
+    "file": "path relative to weights/",
+    "source": "kaggle-run | pretrained-url | manual",
+    "url": "optional direct download URL",
+    "sha256": "optional checksum for integrity",
+    "trained_on": "dataset description",
+    "metrics": "the metric-gate numbers this artifact achieved",
+    "notes": "anything else worth knowing"
+  },
+  "weights": [
+    {
+      "component": "detection",
+      "file": "detection/detect-ball-ft-v1.pt",
+      "source": "pretrained-url",
+      "url": "https://github.com/kmpargkas/cv-football-project/releases/download/weights-v1/detect-ball-ft-v1.pt",
+      "sha256": "ea59d8c95fb978b2b52689fbbdca2c94d8513f761493c77722fa3bcda812c563",
+      "trained_on": "detect-yolo11m-rf12-v1 (broadcast-camera base model, not shipped) fine-tuned on hand-labeled footage2/footage3 ball GT (data/annotations/ball_gt seg1-4, BALL-ONLY labels via scripts/build_ball_finetune.py): 1092 train / 274 val, contiguous 20% tail of each segment held out.",
+      "metrics": "repo harness (eval/detection_map.py, held-out 274 tactical frames @ conf 0.25): ball recall=0.573 (headline), ball AP50=0.564 — vs run-1 0.175 / 0.118 on the SAME frames. ultralytics val (full conf sweep): ball AP50=0.710, recall=0.642, precision=0.849. Phase-4 gate (eval/ball.py, same held-out frames): trajectory completeness=0.759 (gate 0.75), candidate recall=0.650 (gate 0.65), ground error 1.11 px / 0.065 m. FP-rate gate NOT measurable on this GT (only 9 ball-absent frames held out, all in seg2; 0.556 there).",
+      "notes": "Phase 4 run-2 BALL SPECIALIST - NOT a drop-in replacement for run 1. Ball-only labels turn players/GK/refs into hard negatives, so this model detects ONLY the ball: a full track_video.py pass yields 0 player/GK/ref tracks (run-1 yields 50 on the same range). It is therefore NOT detection.weights; Phase 4 runs the ball as an independent pass with these weights and merges with the run-1 player pass via scripts/render_tracking.py. yolo11m, imgsz=1280, batch=8, epochs=80 (best @ epoch 61; 62-80 decayed 0.7135 -> 0.610), patience=20, close_mosaic=15, lr0=0.001, seed=42, 3.83 h on a T4."
+    },
+    {
+      "component": "detection",
+      "file": "detection/detect-tactical-v3.pt",
+      "source": "pretrained-url",
+      "url": "https://github.com/kmpargkas/cv-football-project/releases/download/weights-v1/detect-tactical-v3.pt",
+      "sha256": "83e9f85cdb3997407c6db3d55e76ded020b7f3cffc1e0bec86be32b1faa50f36",
+      "trained_on": "detect-yolo11m-rf12-v1 (broadcast-camera base model, not shipped) fine-tuned on 246 hand-corrected tactical frames / 6,030 boxes across footage1/2/3 (data/annotations/detection_gt, ALL FOUR CLASSES labelled in every frame; built by scripts/build_detection_finetune.py); contiguous 20% tail of each clip held out -> 197 train / 49 val. All three clips are the SAME match (Norway v France), so this set spans viewpoints, not appearance domains -- cross-match generality is measured on ger_cur (7C E5), never asserted from these numbers.",
+      "metrics": "TACTICAL (eval/detection_map.py, conf 0.25, held-out 20% tail of data/finetune_detection, 49 frames): player AP50 0.995, goalkeeper 1.000, referee 0.992 (recall 1.000), ball recall 0.659, mAP50 0.910 -- vs run-1 on the SAME frames: 0.986 / 0.592 / 0.563 (recall 0.600) / 0.682 / 0.700. BROADCAST REGRESSION CHECK FAILED AND ACCEPTED: Roboflow valid split mAP50 0.527 vs run-1's 0.874 (ball recall 0.244 vs 0.667, referee AP 0.420 vs 0.965) -- 246 tactical images cannot hold the broadcast domain. This is a domain trade, not overfitting, because run-3 improves on an UNSEEN tactical match. UNSEEN MATCH (ger_cur, 60 frames, Germany v Curacao -- yellow referees vs black in training, red keeper), class-agnostic recall: ball 0.395 -> 0.535, referee 0.783 -> 1.000, goalkeeper 1.000 -> 1.000, player 0.989 -> 0.990. Run-1 missed 26 referees outright; run-3 misses none.",
+      "notes": "Phase 7A run 3. TACTICAL detector -- NOT a broadcast replacement for run 1, which is retained for that domain (detection.weights is a per-clip config field). GENERAL across classes though, unlike run-2: 300 frames of footage2 yield 29 tracks (2 GK / 24 player / 3 referee) where run-2 yields 0, and unlike run-1 (31 tracks, 6,643 rows, 3 class-flickering tracks) it produces 29 tracks over 7,206 rows with ZERO class flicker. Its one weakness is the class head on goalkeepers in unfamiliar kits (labels 43 of 60 as 'player' on ger_cur) -- it still DETECTS all of them, and reid/roles.py weights detector class at 0.5 and decides the keeper from goal-zone geometry. yolo11m, imgsz=1280, batch=8, epochs=80, patience=60, close_mosaic=30 (mosaic off from epoch 50), best epoch 38 of 80 run, lr0=0.001, seed=42, hsv_h=0.15. hsv_h is 10x the 0.015 default and is load-bearing: all training frames are one match, so at the default the kit colours are a reliable cue the model would learn instead of shape -- any run compared against this one must match it or the comparison is confounded. A first attempt at epochs=200/close_mosaic=15/patience=25 FAILED (best epoch 1, stopped at 26): close_mosaic and the LR decay are both relative to the PLANNED epoch count, so the mosaic-off phase sat at epoch 185 and the LR never decayed."
+    }
+  ]
+}

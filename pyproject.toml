@@ -1,0 +1,79 @@
+[project]
+name = "football-tracker"
+version = "0.1.0"
+description = "Football computer-vision tracker: detection, pitch homography, tracking, ReID, and 2D pitch projection from tactical-camera footage."
+readme = "README.md"
+license = "AGPL-3.0-or-later"
+authors = [
+    { name = "Konstantinos", email = "231751212+kmpargkas@users.noreply.github.com" }
+]
+requires-python = ">=3.11"
+# Core — always installed. The library modules and their unit tests import these.
+dependencies = [
+    "numpy>=2.0",
+    # Core, not optional: reid/teamid.py fits the palette with KMeans and scores its
+    # separability with silhouette_score, and reid/roles.py clusters colour outliers
+    # with AgglomerativeClustering. It was undeclared until CI caught it -- the fuller
+    # dev envs pull it in transitively, so it only failed on the lean `ml + dev` install.
+    "scikit-learn>=1.5",
+    "opencv-python>=4.10.0.84",
+    "pydantic>=2.8",
+    "pyyaml>=6.0.3",
+    "scipy>=1.17.1",
+    "tqdm>=4.68.4",
+]
+
+[project.scripts]
+football-tracker = "football_tracker:main"
+
+[build-system]
+requires = ["uv_build>=0.11.29,<0.12.0"]
+build-backend = "uv_build"
+
+# Dependencies split by pipeline stage. Local `uv sync` installs everything via
+# default-groups below; CI installs only core + ml + dev, since the unit tests need
+# torch (device resolution) and cv2 but nothing from tracking.
+[dependency-groups]
+# ML / CV — detection, calibration, training.
+ml = [
+    "torch>=2.13.0",
+    "torchvision>=0.28.0",
+    "ultralytics>=8.4.98",
+    "supervision>=0.29.1",
+]
+# Tracking / ReID.
+tracking = [
+    "boxmot>=22.0.0",
+]
+dev = [
+    "pre-commit>=4.6.0",
+    "pytest>=9.1.1",
+    "ruff>=0.15.22",
+]
+
+[tool.uv]
+# Local `uv sync` installs the full environment (keeps the README quickstart honest).
+# CI overrides this with --no-default-groups --group ml --group dev for a lean install.
+default-groups = ["ml", "tracking", "dev"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "scripts", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort (import ordering)
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "SIM", # flake8-simplify
+    "PTH", # prefer pathlib
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+pythonpath = ["."]  # so tests can import scripts/ (not an installed package)
